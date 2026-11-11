@@ -193,8 +193,8 @@
     <summary>How Flips works</summary>
     <p>Each player is dealt <b>10 face-down cards</b>. The starting player flips until their best five-card poker hand beats the other player's (with nothing showing, one card does it). Then the other player flips until they beat that, and play goes back and forth. Ties don't count as beating.</p>
     <p>If you run out of cards without beating your opponent, they lead — but they still have to flip <b>every remaining card</b>, because the A♠ could be hiding in there.</p>
-    <p><b>2s are wild</b> (optional): a 2 becomes whatever card gives you the best hand, including five of a kind. <b>A♠ is an instant loss</b> (optional): flip it and you lose. And since you must always play your best hand, if your best hand can only be made by turning a wild into the A♠ (say a spade royal flush or an ace-high spade flush), you lose too.</p>
-    <p>Hand ranking, high to low: Five of a Kind, Straight Flush, Four of a Kind, Full House, Flush, Straight, Three of a Kind, Two Pair, Pair, High Card. Highlighted cards are the five that make your current hand.</p>
+    <p><b>2s are wild</b> (optional): a 2 becomes whatever card gives you the best standard hand. <b>A♠ is an instant loss</b> (optional): flip it and you lose. And since you must always play your best hand, if your best hand can only be made by turning a wild into the A♠ (say a spade royal flush or an ace-high spade flush), you lose too.</p>
+    <p>Hand ranking, high to low (standard Hold'em): Royal Flush, Straight Flush, Four of a Kind, Full House, Flush, Straight, Three of a Kind, Two Pair, Pair, High Card. Highlighted cards are the five that make your current hand.</p>
   </details>
 </div>
 
@@ -229,8 +229,8 @@ function evaluate(cards,wildsOn){
   // pick a cosmetic suit for a wild of rank r (never the A♠ unless the hand needs it)
   function wsuit(r,taken){
     const have=new Set(byRank[r].map(c=>c.s).concat(taken.filter(t=>t.r===r).map(t=>t.s)));
-    const order=['h','d','c','s'].filter(s=>!(r===14&&s==='s'));
-    return order.find(s=>!have.has(s))||'h';
+    // wilds are real, unused cards: only fall back to the A♠ when no other ace is free
+    return ['h','d','c','s'].find(s=>!have.has(s))||'h';
   }
   function wildsAs(list){ // list of ranks → assignments
     const out=[];list.forEach(r=>out.push({r,s:wsuit(r,out)}));return out;
@@ -238,20 +238,21 @@ function evaluate(cards,wildsOn){
   function kickers(usedNat,exclRanks,k,wa){
     const ids=new Set(usedNat.map(c=>c.id));const ranks=[];const cardsK=[];const extra=[];
     let left=W-wa.length;
-    while(ranks.length<k&&left>0){extra.push(14);ranks.push(14);left--}
+    // a spare wild becomes the best kicker that keeps the hand standard (never a 5th of a rank)
+    while(ranks.length<k&&left>0){
+      const r=RANKS.find(x=>!exclRanks.includes(x)&&!ranks.includes(x)&&cnt(x)===0)??RANKS.find(x=>!exclRanks.includes(x)&&!ranks.includes(x));
+      extra.push(r);ranks.push(r);left--;
+    }
     for(const c of nat){if(ranks.length>=k)break;if(ids.has(c.id)||exclRanks.includes(c.r))continue;ranks.push(c.r);cardsK.push(c)}
     return {ranks,cards:cardsK,wa:wildsAs(extra)};
   }
   function finish(cat,tb,usedNat,wa,forced=false){
     const used=new Set(usedNat.map(c=>c.id));const wildMap={};
     wa.forEach((a,i)=>{const w=wilds[i];if(!w)return;used.add(w.id);wildMap[w.id]=a});
+    forced=forced||wa.some(a=>a.r===14&&a.s==='s');
     return {val:[cat,...tb],cat,tb,used,wildMap,forcedAS:forced,name:handName(cat,tb)};
   }
 
-  // 9 Five of a kind
-  if(W>=1&&n>=5) for(const r of RANKS){
-    if(cnt(r)>=1&&cnt(r)+W>=5){const need=5-cnt(r);return finish(9,[r],byRank[r].slice(0,5),wildsAs(Array(need).fill(r)))}
-  }
   // 8 Straight flush (spades checked last so ties go to a safe suit)
   if(n>=5){
     let best=null;
@@ -326,7 +327,6 @@ function evaluate(cards,wildsOn){
 function handName(cat,tb){
   const r=tb[0];
   switch(cat){
-    case 9:return `Five of a Kind, ${PL(r)}`;
     case 8:return r===14?'Royal Flush':`Straight Flush, ${RNAME[r]}-high`;
     case 7:return `Four of a Kind, ${PL(r)}`;
     case 6:return `Full House, ${PL(r)} over ${PL(tb[1])}`;
