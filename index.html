@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#0f4a35; --felt2:#0a3326; --gold:#e6c36a; --gold-dim:#a68a45;
+    --ink:#f4efe1; --muted:#b9c9bf; --p0:#ff8a6b; --p1:#6bc7ff;
+    --card:#fbf8f1; --red:#c8323c; --black:#1b1d22; --danger:#ff4d5e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:Inter,system-ui,sans-serif;color:var(--ink);
+    background:radial-gradient(ellipse at 50% 30%,#17664a 0%,var(--felt) 45%,var(--felt2) 100%) fixed;
+    -webkit-tap-highlight-color:transparent;
+  }
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.07;
+    background-image:radial-gradient(#000 1px,transparent 1px);background-size:3px 3px}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px 14px 40px;position:relative}
+  header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;justify-content:space-between;margin-bottom:14px}
+  .brand{display:flex;align-items:baseline;gap:10px}
+  .brand h1{font-family:"DM Serif Display",serif;font-weight:400;font-size:40px;margin:0;letter-spacing:.5px;color:var(--gold);
+    text-shadow:0 2px 0 rgba(0,0,0,.35)}
+  .brand span{color:var(--muted);font-size:13px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .toggle{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.22);border:1px solid rgba(230,195,106,.25);
+    padding:7px 12px 7px 8px;border-radius:999px;font-size:13px;cursor:pointer;user-select:none}
+  .toggle input{display:none}
+  .sw{width:34px;height:20px;border-radius:999px;background:#2b3f37;position:relative;transition:.2s;flex:none}
+  .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#cfd8d3;transition:.2s}
+  .toggle input:checked + .sw{background:var(--gold-dim)}
+  .toggle input:checked + .sw::after{left:16px;background:#fff6dc}
+  button{font-family:inherit;cursor:pointer}
+  .btn{border:none;border-radius:999px;padding:9px 16px;font-weight:600;font-size:14px;color:#1d1a10;
+    background:linear-gradient(180deg,#f3d88f,#d9b25a);box-shadow:0 3px 0 #8f7334,0 6px 14px rgba(0,0,0,.25);transition:transform .08s}
+  .btn:active{transform:translateY(2px);box-shadow:0 1px 0 #8f7334}
+  .btn.ghost{background:rgba(0,0,0,.25);color:var(--ink);box-shadow:none;border:1px solid rgba(255,255,255,.15)}
+  .btn.ghost.on{border-color:var(--gold);color:var(--gold)}
+
+  .board{display:grid;grid-template-columns:1fr 210px 1fr;gap:16px;align-items:stretch}
+  @media (max-width:900px){ .board{grid-template-columns:1fr} .center{order:0} #panel0{order:-1} #panel1{order:1} }
+
+  .panel{background:linear-gradient(180deg,rgba(0,0,0,.20),rgba(0,0,0,.30));border:1px solid rgba(255,255,255,.08);
+    border-radius:20px;padding:14px;position:relative;transition:box-shadow .3s,border-color .3s}
+  .panel.active{border-color:var(--pc);box-shadow:0 0 0 2px var(--pc),0 0 34px -6px var(--pc)}
+  .panel.lost{filter:saturate(.6) brightness(.85)}
+  .panel.won{border-color:var(--gold);box-shadow:0 0 0 2px var(--gold),0 0 40px -4px var(--gold)}
+  #panel0{--pc:var(--p0)} #panel1{--pc:var(--p1)}
+  .phead{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--pc);flex:none;box-shadow:0 0 10px var(--pc)}
+  .pname{background:transparent;border:none;color:var(--ink);font:600 17px Inter,sans-serif;width:100%;min-width:0;padding:2px 0;
+    border-bottom:1px dashed transparent}
+  .pname:focus{outline:none;border-bottom-color:rgba(255,255,255,.3)}
+  .score{font-size:12px;color:var(--muted);white-space:nowrap;background:rgba(0,0,0,.25);padding:4px 9px;border-radius:999px}
+  .score b{color:var(--gold);font-size:14px}
+  .handname{min-height:46px;display:flex;flex-direction:column;justify-content:center;margin-bottom:10px;
+    background:rgba(0,0,0,.22);border-radius:12px;padding:6px 12px}
+  .handname .lbl{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
+  .handname .val{font-family:"DM Serif Display",serif;font-size:21px;line-height:1.2}
+  .handname .val.empty{color:#7f978b;font-family:Inter;font-size:14px}
+
+  .cards{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+  .card{aspect-ratio:5/7;perspective:700px;position:relative}
+  .inner{position:absolute;inset:0;transition:transform .55s cubic-bezier(.3,1.4,.5,1),translate .25s;transform-style:preserve-3d}
+  .card.up .inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;border-radius:9px;backface-visibility:hidden;-webkit-backface-visibility:hidden;overflow:hidden}
+  .back{background:
+      repeating-linear-gradient(45deg,rgba(230,195,106,.18) 0 2px,transparent 2px 7px),
+      repeating-linear-gradient(-45deg,rgba(230,195,106,.18) 0 2px,transparent 2px 7px),
+      linear-gradient(160deg,#7b1e2a,#4a0f19);
+    border:2px solid #f0e2bf;box-shadow:inset 0 0 0 3px #4a0f19,inset 0 0 0 4px rgba(230,195,106,.6),0 3px 8px rgba(0,0,0,.35)}
+  .back::after{content:"F";position:absolute;inset:0;display:grid;place-items:center;font-family:"DM Serif Display",serif;
+    color:rgba(240,226,191,.55);font-size:clamp(14px,3vw,24px)}
+  .card.next .back{box-shadow:inset 0 0 0 3px #4a0f19,inset 0 0 0 4px rgba(230,195,106,.6),0 0 0 2px var(--pc),0 0 16px var(--pc)}
+  .front{transform:rotateY(180deg);background:var(--card);color:var(--black);box-shadow:0 3px 8px rgba(0,0,0,.35);border:1px solid #e3dccb}
+  .front.red{color:var(--red)}
+  .corner{position:absolute;top:4px;left:5px;line-height:.95;text-align:center;font-family:"DM Serif Display",serif;font-size:clamp(12px,2.4vw,19px)}
+  .corner small{display:block;font-family:Inter;font-size:.8em}
+  .corner.br{top:auto;left:auto;bottom:4px;right:5px;transform:rotate(180deg)}
+  .pip{position:absolute;inset:0;display:grid;place-items:center;font-size:clamp(20px,5vw,40px)}
+  .front.wild{background:linear-gradient(150deg,#fff8e4,#f2dfae)}
+  .front.wild .pip{font-family:"DM Serif Display",serif;color:#8b6a20}
+  .badge{position:absolute;left:50%;bottom:5px;transform:translateX(-50%);font:700 clamp(7px,1.5vw,10px) Inter;letter-spacing:.6px;
+    padding:2px 5px;border-radius:5px;background:#1e3a2f;color:#f3d88f;white-space:nowrap}
+  .badge.bad{background:var(--danger);color:#fff}
+  .card.used .inner{translate:0 -5px}
+  .card.used .front{box-shadow:0 0 0 2px var(--gold),0 8px 14px rgba(0,0,0,.4)}
+  .card.unused .front{filter:brightness(.72) saturate(.7)}
+  .card.deadly .front{box-shadow:0 0 0 3px var(--danger),0 0 22px var(--danger);animation:shake .5s}
+  .card.ghost .inner{opacity:.55}
+  @keyframes shake{0%,100%{rotate:0}25%{rotate:-4deg}75%{rotate:4deg}}
+
+  .flip{width:100%;padding:14px;border-radius:14px;border:none;font:700 16px Inter;letter-spacing:.3px;color:#13110a;
+    background:linear-gradient(180deg,#ffe3a0,#e2b856);box-shadow:0 4px 0 #8f7334,0 8px 18px rgba(0,0,0,.3);transition:transform .08s,filter .2s}
+  .flip:active:not(:disabled){transform:translateY(3px);box-shadow:0 1px 0 #8f7334}
+  .flip:disabled{background:#3a4a43;color:#7f918a;box-shadow:none;cursor:not-allowed}
+  .flip .sub{display:block;font-size:11px;font-weight:500;opacity:.75;margin-top:2px}
+
+  .center{display:flex;flex-direction:column;gap:12px;justify-content:center}
+  .status{background:rgba(0,0,0,.3);border:1px solid rgba(230,195,106,.25);border-radius:16px;padding:14px;text-align:center;font-size:14px;line-height:1.45}
+  .status .turn{font-family:"DM Serif Display",serif;font-size:22px;color:var(--gold);margin-bottom:4px}
+  .vs{font-family:"DM Serif Display",serif;font-size:30px;text-align:center;color:rgba(230,195,106,.6)}
+  @media (max-width:900px){.vs{display:none}}
+  .result{display:none;background:linear-gradient(180deg,#f6dc93,#d8ad52);color:#1d1708;border-radius:16px;padding:14px;text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
+  .result.show{display:block}
+  .result h2{margin:0 0 4px;font-family:"DM Serif Display",serif;font-weight:400;font-size:26px}
+  .result p{margin:0 0 10px;font-size:13px}
+  .result .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .result .btn{background:#1d1708;color:#f6dc93;box-shadow:none}
+  .result .btn.ghost{background:transparent;color:#1d1708;border-color:rgba(0,0,0,.3)}
+  @keyframes pop{from{transform:scale(.85);opacity:0}}
+  .log{background:rgba(0,0,0,.2);border-radius:14px;padding:10px 12px;font-size:12px;color:var(--muted);max-height:180px;overflow:auto}
+  .log div{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .log div:first-child{color:var(--ink)}
+  .log .c0{color:var(--p0)} .log .c1{color:var(--p1)}
+  .play{display:block}
+  /* ---------- Phone: both players on one screen ---------- */
+  @media (max-width:900px){
+    .wrap{padding:8px 10px 16px}
+    header{margin-bottom:8px;gap:6px 10px}
+    .brand h1{font-size:26px}
+    .brand span{display:none}
+    .controls{display:contents}
+    .brand{flex:1 1 auto;order:0}
+    #newBtn{order:1}
+    .toggle,#autoBtn{order:2}
+    header::after{content:"";order:1;flex-basis:100%;height:0}
+    .toggle{font-size:11px;padding:4px 8px 4px 4px;gap:5px}
+    .sw{width:26px;height:16px}
+    .sw::after{width:12px;height:12px}
+    .toggle input:checked + .sw::after{left:12px}
+    .btn{padding:6px 11px;font-size:12px;box-shadow:0 2px 0 #8f7334}
+    .board{gap:8px}
+    .vs,.log{display:none}
+    body.over .status{display:none}
+    .status{padding:7px 10px;font-size:12.5px;border-radius:12px;line-height:1.35}
+    .status .turn{font-size:17px;margin-bottom:1px}
+    .result{padding:9px 10px;border-radius:12px}
+    .result h2{font-size:20px;margin:0}
+    .result p{font-size:12px;margin:0 0 7px}
+    .result .btn{padding:6px 12px}
+    .panel{padding:9px 10px;border-radius:16px}
+    .phead{margin-bottom:6px;gap:8px}
+    .pname{font-size:15px}
+    .score{font-size:11px;padding:3px 8px}
+    .score b{font-size:12px}
+    .handname{min-height:0;padding:4px 10px;margin-bottom:7px;border-radius:9px;flex-direction:row;align-items:baseline;gap:8px}
+    .handname .val{font-size:16px}
+    .handname .val.empty{font-size:12px}
+    .play{display:flex;gap:8px;align-items:stretch}
+    .cards{flex:1;gap:5px;margin:0}
+    .card .face{border-radius:6px}
+    .card.used .inner{translate:0 -3px}
+    .flip{width:66px;flex:none;padding:6px 4px;border-radius:12px;font-size:15px;box-shadow:0 3px 0 #8f7334}
+    .flip .sub{font-size:9.5px;line-height:1.25;margin-top:4px}
+    details.rules{margin-top:12px}
+  }
+  details.rules{margin-top:18px;background:rgba(0,0,0,.2);border-radius:14px;padding:10px 14px;font-size:13px;color:var(--muted);line-height:1.55}
+  details.rules summary{cursor:pointer;color:var(--ink);font-weight:600}
+  details.rules b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1>Flips</h1><span>best poker hand out of ten</span></div>
+    <div class="controls">
+      <label class="toggle"><input type="checkbox" id="optWild" checked><span class="sw"></span>2s are wild</label>
+      <label class="toggle"><input type="checkbox" id="optAce" checked><span class="sw"></span>A♠ = instant loss</label>
+      <button class="btn ghost" id="autoBtn">Auto-play</button>
+      <button class="btn" id="newBtn">New deal</button>
+    </div>
+  </header>
+
+  <div class="board">
+    <section class="panel" id="panel0"></section>
+    <div class="center">
+      <div class="vs">vs</div>
+      <div class="status" id="status"></div>
+      <div class="result" id="result"></div>
+      <div class="log" id="log"></div>
+    </div>
+    <section class="panel" id="panel1"></section>
+  </div>
+
+  <details class="rules">
+    <summary>How Flips works</summary>
+    <p>Each player is dealt <b>10 face-down cards</b>. The starting player flips until their best five-card poker hand beats the other player's (with nothing showing, one card does it). Then the other player flips until they beat that, and play goes back and forth. Ties don't count as beating.</p>
+    <p>If you run out of cards without beating your opponent, they lead — but they still have to flip <b>every remaining card</b>, because the A♠ could be hiding in there.</p>
+    <p><b>2s are wild</b> (optional): a 2 becomes whatever card gives you the best hand, including five of a kind. <b>A♠ is an instant loss</b> (optional): flip it and you lose. And since you must always play your best hand, if your best hand can only be made by turning a wild into the A♠ (say a spade royal flush or an ace-high spade flush), you lose too.</p>
+    <p>Hand ranking, high to low: Five of a Kind, Straight Flush, Four of a Kind, Full House, Flush, Straight, Three of a Kind, Two Pair, Pair, High Card. Highlighted cards are the five that make your current hand.</p>
+  </details>
+</div>
+
+<script>
+const SUITS=['s','h','d','c'];
+const SYM={s:'♠',h:'♥',d:'♦',c:'♣'};
+const RS={14:'A',13:'K',12:'Q',11:'J',10:'10',9:'9',8:'8',7:'7',6:'6',5:'5',4:'4',3:'3',2:'2'};
+const RNAME={14:'Ace',13:'King',12:'Queen',11:'Jack',10:'Ten',9:'Nine',8:'Eight',7:'Seven',6:'Six',5:'Five',4:'Four',3:'Three',2:'Two'};
+const PL=r=>r===6?'Sixes':RNAME[r]+'s';
+const RANKS=[14,13,12,11,10,9,8,7,6,5,4,3,2];
+const seqFor=h=>h===5?[5,4,3,2,14]:[h,h-1,h-2,h-3,h-4];
+
+function cmp(a,b){
+  const n=Math.max(a.length,b.length);
+  for(let i=0;i<n;i++){const x=a[i]??-1,y=b[i]??-1;if(x!==y)return x>y?1:-1}
+  return 0;
+}
+
+/* ---------- Hand evaluator (supports wilds and partial hands) ---------- */
+function evaluate(cards,wildsOn){
+  const n=cards.length;
+  const empty={val:[-1],name:null,used:new Set(),wildMap:{},forcedAS:false};
+  if(!n) return empty;
+  const isW=c=>wildsOn&&c.r===2;
+  const wilds=cards.filter(isW);
+  const nat=cards.filter(c=>!isW(c)).sort((a,b)=>b.r-a.r||SUITS.indexOf(a.s)-SUITS.indexOf(b.s));
+  const W=wilds.length;
+  const byRank={};RANKS.forEach(r=>byRank[r]=[]);nat.forEach(c=>byRank[c.r].push(c));
+  const cnt=r=>byRank[r].length;
+  const bySuit={s:{},h:{},d:{},c:{}};nat.forEach(c=>bySuit[c.s][c.r]=c);
+
+  // pick a cosmetic suit for a wild of rank r (never the A♠ unless the hand needs it)
+  function wsuit(r,taken){
+    const have=new Set(byRank[r].map(c=>c.s).concat(taken.filter(t=>t.r===r).map(t=>t.s)));
+    const order=['h','d','c','s'].filter(s=>!(r===14&&s==='s'));
+    return order.find(s=>!have.has(s))||'h';
+  }
+  function wildsAs(list){ // list of ranks → assignments
+    const out=[];list.forEach(r=>out.push({r,s:wsuit(r,out)}));return out;
+  }
+  function kickers(usedNat,exclRanks,k,wa){
+    const ids=new Set(usedNat.map(c=>c.id));const ranks=[];const cardsK=[];const extra=[];
+    let left=W-wa.length;
+    while(ranks.length<k&&left>0){extra.push(14);ranks.push(14);left--}
+    for(const c of nat){if(ranks.length>=k)break;if(ids.has(c.id)||exclRanks.includes(c.r))continue;ranks.push(c.r);cardsK.push(c)}
+    return {ranks,cards:cardsK,wa:wildsAs(extra)};
+  }
+  function finish(cat,tb,usedNat,wa,forced=false){
+    const used=new Set(usedNat.map(c=>c.id));const wildMap={};
+    wa.forEach((a,i)=>{const w=wilds[i];if(!w)return;used.add(w.id);wildMap[w.id]=a});
+    return {val:[cat,...tb],cat,tb,used,wildMap,forcedAS:forced,name:handName(cat,tb)};
+  }
+
+  // 9 Five of a kind
+  if(W>=1&&n>=5) for(const r of RANKS){
+    if(cnt(r)>=1&&cnt(r)+W>=5){const need=5-cnt(r);return finish(9,[r],byRank[r].slice(0,5),wildsAs(Array(need).fill(r)))}
+  }
+  // 8 Straight flush (spades checked last so ties go to a safe suit)
+  if(n>=5){
+    let best=null;
+    for(const s of ['h','d','c','s']) for(let h=14;h>=5;h--){
+      const seq=seqFor(h);const miss=seq.filter(r=>!bySuit[s][r]);
+      if(miss.length<=W){if(!best||h>best.h)best={h,s,seq,miss};break}
+    }
+    if(best){
+      const forced=best.s==='s'&&best.seq.includes(14)&&!bySuit.s[14];
+      const usedNat=best.seq.filter(r=>bySuit[best.s][r]).map(r=>bySuit[best.s][r]);
+      return finish(8,[best.h],usedNat,best.miss.map(r=>({r,s:best.s})),forced);
+    }
+  }
+  // 7 Four of a kind
+  if(n>=4) for(const r of RANKS){
+    const need=Math.max(0,4-cnt(r));
+    if(need<=W){const u=byRank[r].slice(0,4);const wa=wildsAs(Array(need).fill(r));const k=kickers(u,[r],1,wa);
+      return finish(7,[r,...k.ranks],u.concat(k.cards),wa.concat(k.wa))}
+  }
+  // 6 Full house
+  if(n>=5) for(const a of RANKS) for(const b of RANKS){
+    if(a===b)continue;const na=Math.max(0,3-cnt(a)),nb=Math.max(0,2-cnt(b));
+    if(na+nb<=W) return finish(6,[a,b],byRank[a].slice(0,3).concat(byRank[b].slice(0,2)),wildsAs(Array(na).fill(a).concat(Array(nb).fill(b))));
+  }
+  // 5 Flush
+  if(n>=5){
+    let best=null;
+    for(const s of ['h','d','c','s']){
+      const pres=RANKS.filter(r=>bySuit[s][r]);if(pres.length+W<5)continue;
+      const abs=RANKS.filter(r=>!bySuit[s][r]);const pick=[];let pi=0,ai=0,wl=W;
+      while(pick.length<5){
+        const pn=pi<pres.length?pres[pi]:-1;const an=(wl>0&&ai<abs.length)?abs[ai]:-1;
+        if(an>pn){pick.push({r:an,w:true});ai++;wl--}else{pick.push({r:pn,w:false});pi++}
+      }
+      const tb=pick.map(p=>p.r);
+      if(!best||cmp(tb,best.tb)>0)best={s,tb,pick};
+    }
+    if(best){
+      const forced=best.s==='s'&&best.pick.some(p=>p.w&&p.r===14);
+      const usedNat=best.pick.filter(p=>!p.w).map(p=>bySuit[best.s][p.r]);
+      return finish(5,best.tb,usedNat,best.pick.filter(p=>p.w).map(p=>({r:p.r,s:best.s})),forced);
+    }
+  }
+  // 4 Straight
+  if(n>=5) for(let h=14;h>=5;h--){
+    const seq=seqFor(h);const miss=seq.filter(r=>cnt(r)===0);
+    if(miss.length<=W) return finish(4,[h],seq.filter(r=>cnt(r)>0).map(r=>byRank[r][0]),wildsAs(miss));
+  }
+  // 3 Three of a kind
+  if(n>=3) for(const r of RANKS){
+    const need=Math.max(0,3-cnt(r));
+    if(need<=W){const u=byRank[r].slice(0,3);const wa=wildsAs(Array(need).fill(r));const k=kickers(u,[r],2,wa);
+      return finish(3,[r,...k.ranks],u.concat(k.cards),wa.concat(k.wa))}
+  }
+  // 2 Two pair
+  if(n>=4) for(const a of RANKS) for(const b of RANKS){
+    if(b>=a)continue;const na=Math.max(0,2-cnt(a)),nb=Math.max(0,2-cnt(b));
+    if(na+nb<=W){const u=byRank[a].slice(0,2).concat(byRank[b].slice(0,2));const wa=wildsAs(Array(na).fill(a).concat(Array(nb).fill(b)));
+      const k=kickers(u,[a,b],1,wa);return finish(2,[a,b,...k.ranks],u.concat(k.cards),wa.concat(k.wa))}
+  }
+  // 1 Pair
+  if(n>=2) for(const r of RANKS){
+    const need=Math.max(0,2-cnt(r));
+    if(need<=W){const u=byRank[r].slice(0,2);const wa=wildsAs(Array(need).fill(r));const k=kickers(u,[r],3,wa);
+      return finish(1,[r,...k.ranks],u.concat(k.cards),wa.concat(k.wa))}
+  }
+  // 0 High card
+  const k=kickers([],[],5,[]);
+  return finish(0,k.ranks,k.cards,k.wa);
+}
+
+function handName(cat,tb){
+  const r=tb[0];
+  switch(cat){
+    case 9:return `Five of a Kind, ${PL(r)}`;
+    case 8:return r===14?'Royal Flush':`Straight Flush, ${RNAME[r]}-high`;
+    case 7:return `Four of a Kind, ${PL(r)}`;
+    case 6:return `Full House, ${PL(r)} over ${PL(tb[1])}`;
+    case 5:return `Flush, ${RNAME[r]}-high`;
+    case 4:return `Straight, ${RNAME[r]}-high`;
+    case 3:return `Three of a Kind, ${PL(r)}`;
+    case 2:return `Two Pair, ${PL(r)} & ${PL(tb[1])}`;
+    case 1:return `Pair of ${PL(r)}`;
+    default:return `${RNAME[r]}-high`;
+  }
+}
+
+/* ---------- Game state ---------- */
+let store={};try{store=JSON.parse(localStorage.getItem('flips')||'{}')}catch(e){}
+const S={names:store.names||['Player 1','Player 2'],wins:store.wins||[0,0],starter:Math.random()<.5?0:1,opt:{wild:true,ace:true}};
+function save(){try{localStorage.setItem('flips',JSON.stringify({names:S.names,wins:S.wins}))}catch(e){}}
+const nm=p=>`<span class="c${p}">${esc(S.names[p])}</span>`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function newGame(){
+  stopAuto();
+  S.opt.wild=document.getElementById('optWild').checked;
+  S.opt.ace=document.getElementById('optAce').checked;
+  const deck=[];let id=0;for(const s of SUITS)for(const r of RANKS)deck.push({r,s,id:id++});
+  for(let i=deck.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}
+  S.hands=[deck.slice(0,10),deck.slice(10,20)];
+  S.rc=[0,0];S.ev=[evaluate([],S.opt.wild),evaluate([],S.opt.wild)];
+  S.starter=1-S.starter;S.turn=S.starter;S.phase='play';S.winner=null;S.loser=null;S.deadly=null;S.peek=false;
+  S.log=[];
+  buildPanels();
+  setStatus(`${nm(S.turn)} starts`,`Flip a card to set the bar.`);
+  addLog(`New deal — ${nm(S.turn)} goes first.`);
+  render();
+}
+
+function buildPanels(){
+  for(const p of [0,1]){
+    const el=document.getElementById('panel'+p);
+    el.innerHTML=`
+      <div class="phead"><span class="dot"></span>
+        <input class="pname" value="${esc(S.names[p])}" maxlength="18" aria-label="Player name">
+        <span class="score">Wins <b>${S.wins[p]}</b></span></div>
+      <div class="handname"><span class="lbl">Showing</span><span class="val empty">No cards flipped</span></div>
+      <div class="play"><div class="cards"></div>
+      <button class="flip"></button></div>`;
+    const cardsEl=el.querySelector('.cards');
+    S.hands[p].forEach(c=>{
+      const red=c.s==='h'||c.s==='d';const wild=S.opt.wild&&c.r===2;
+      const d=document.createElement('div');d.className='card';d.dataset.id=c.id;
+      d.innerHTML=`<div class="inner"><div class="face back"></div>
+        <div class="face front ${red?'red':''} ${wild?'wild':''}">
+          <div class="corner">${RS[c.r]}<small>${SYM[c.s]}</small></div>
+          <div class="corner br">${RS[c.r]}<small>${SYM[c.s]}</small></div>
+          <div class="pip">${wild?'★':SYM[c.s]}</div>
+          ${wild?'<span class="badge">WILD</span>':''}
+        </div></div>`;
+      cardsEl.appendChild(d);
+    });
+    el.querySelector('.flip').onclick=()=>flip(p);
+    const inp=el.querySelector('.pname');
+    inp.oninput=()=>{S.names[p]=inp.value.trim()||`Player ${p+1}`;save()};
+    inp.onchange=()=>render();
+  }
+}
+
+function canFlip(p){return S.phase!=='over'&&S.turn===p&&S.rc[p]<10}
+
+function flip(p){
+  if(!canFlip(p))return;
+  const o=1-p;
+  S.rc[p]++;
+  const card=S.hands[p][S.rc[p]-1];
+  S.ev[p]=evaluate(S.hands[p].slice(0,S.rc[p]),S.opt.wild);
+  const ev=S.ev[p];
+  const cs=`${RS[card.r]}${SYM[card.s]}`;
+  addLog(`${nm(p)} flips ${cs} → ${ev.name}`);
+
+  if(S.opt.ace){
+    if(card.r===14&&card.s==='s'){S.deadly={p,id:card.id};return endGame(o,`${nm(p)} flipped the A♠.`)}
+    if(ev.forcedAS){
+      const wid=Object.keys(ev.wildMap).find(k=>ev.wildMap[k].r===14&&ev.wildMap[k].s==='s');
+      S.deadly={p,id:+wid};
+      return endGame(o,`${nm(p)}'s best hand is a ${ev.name} — which needs a wild to be the A♠.`);
+    }
+  }
+  if(S.phase==='play'){
+    if(cmp(ev.val,S.ev[o].val)>0){
+      if(S.rc[o]>=10){
+        S.phase='cleanup';S.turn=p;
+        if(S.rc[p]>=10)return endGame(p,`${nm(o)} had no cards left to answer ${ev.name}.`);
+        setStatus(`${nm(p)} leads`,`${nm(o)} has no cards left. ${nm(p)} must flip the remaining ${10-S.rc[p]} — the A♠ could still be in there.`);
+      }else{
+        S.turn=o;
+        setStatus(`${nm(o)}'s turn`,`Beat ${nm(p)}'s <b>${ev.name}</b>.`);
+      }
+    }else if(S.rc[p]>=10){
+      S.phase='cleanup';S.turn=o;
+      addLog(`${nm(p)} is out of cards.`);
+      if(S.rc[o]>=10)return endGame(o,`${nm(p)} ran out of cards without beating ${S.ev[o].name}.`);
+      setStatus(`${nm(o)} leads`,`${nm(p)} ran out of cards. ${nm(o)} must flip the remaining ${10-S.rc[o]} — the A♠ could still be in there.`);
+    }else{
+      const tie=cmp(ev.val,S.ev[o].val)===0;
+      setStatus(`${nm(p)}'s turn`,`${tie?'Tied — ties don\'t count. ':''}Still need to beat <b>${S.ev[o].name}</b>. ${10-S.rc[p]} card${10-S.rc[p]===1?'':'s'} left.`);
+    }
+  }else{
+    if(S.rc[p]>=10)return endGame(p,`${nm(p)} survived every flip with ${ev.name}.`);
+    setStatus(`${nm(p)} leads`,`Keep flipping — ${10-S.rc[p]} left to clear.`);
+  }
+  render();
+}
+
+function endGame(w,why){
+  S.phase='over';S.winner=w;S.loser=1-w;S.wins[w]++;save();stopAuto();
+  addLog(`<b>${nm(w)} wins.</b>`);
+  setStatus('Game over',why);
+  const r=document.getElementById('result');
+  r.innerHTML=`<h2>${esc(S.names[w])} wins!</h2><p>${why}</p>
+    <div class="row"><button class="btn" id="againBtn">Deal again</button>
+    ${(S.rc[0]<10||S.rc[1]<10)?'<button class="btn ghost" id="peekBtn">Peek at unflipped</button>':''}</div>`;
+  r.querySelector('#againBtn').onclick=newGame;
+  const pk=r.querySelector('#peekBtn');if(pk)pk.onclick=()=>{S.peek=!S.peek;pk.textContent=S.peek?'Hide unflipped':'Peek at unflipped';render()};
+  render();
+}
+
+function setStatus(t,s){S.status={t,s}}
+function addLog(h){S.log.unshift(h)}
+
+function render(){
+  for(const p of [0,1]){
+    const el=document.getElementById('panel'+p);
+    el.classList.toggle('active',S.phase!=='over'&&S.turn===p);
+    el.classList.toggle('won',S.winner===p);
+    el.classList.toggle('lost',S.loser===p);
+    el.querySelector('.score b').textContent=S.wins[p];
+    const ev=S.ev[p];const hv=el.querySelector('.handname .val');
+    if(ev.name){hv.textContent=ev.name;hv.classList.remove('empty')}else{hv.textContent='No cards flipped';hv.classList.add('empty')}
+    el.querySelectorAll('.card').forEach((d,i)=>{
+      const c=S.hands[p][i];const up=i<S.rc[p];
+      const ghost=!up&&S.phase==='over'&&S.peek;
+      d.classList.toggle('up',up||ghost);
+      d.classList.toggle('ghost',ghost);
+      d.classList.toggle('next',!up&&i===S.rc[p]&&canFlip(p));
+      d.classList.toggle('used',up&&ev.used.has(c.id));
+      d.classList.toggle('unused',up&&!ev.used.has(c.id));
+      d.classList.toggle('deadly',!!S.deadly&&S.deadly.p===p&&S.deadly.id===c.id);
+      const badge=d.querySelector('.badge');
+      if(badge){
+        const a=up&&ev.wildMap[c.id];
+        badge.textContent=a?`→ ${RS[a.r]}${SYM[a.s]}`:'WILD';
+        badge.classList.toggle('bad',!!a&&a.r===14&&a.s==='s'&&S.opt.ace);
+      }
+    });
+    const b=el.querySelector('.flip');const left=10-S.rc[p];
+    b.disabled=!canFlip(p);
+    let sub;
+    if(S.phase==='over')sub=S.winner===p?'Winner':'Out';
+    else if(left===0)sub='No cards left';
+    else if(S.turn!==p)sub=`Waiting · ${left} left`;
+    else if(S.phase==='cleanup')sub=`${phone.matches?'A♠ check':'Clearing for A♠'} · ${left} left`;
+    else if(phone.matches)sub=S.rc[1-p]===0?`Set the bar · ${left} left`:`To beat · ${left} left`;
+    else sub=S.rc[1-p]===0?`Set the bar · ${left} left`:`Beat ${S.ev[1-p].name} · ${left} left`;
+    b.innerHTML=`${phone.matches?'Flip':'Flip a card'}<span class="sub">${sub}</span>`;
+  }
+  document.body.classList.toggle('over',S.phase==='over');
+  document.getElementById('status').innerHTML=`<div class="turn">${S.status.t}</div>${S.status.s}`;
+  document.getElementById('result').classList.toggle('show',S.phase==='over');
+  document.getElementById('log').innerHTML=S.log.map(l=>`<div>${l}</div>`).join('');
+}
+
+const phone=matchMedia('(max-width:900px)');
+phone.addEventListener?.('change',()=>render());
+/* ---------- Auto-play ---------- */
+let autoT=null;
+const autoBtn=document.getElementById('autoBtn');
+function stopAuto(){clearInterval(autoT);autoT=null;autoBtn.classList.remove('on');autoBtn.textContent=phone.matches?'Auto':'Auto-play'}
+autoBtn.onclick=()=>{
+  if(autoT)return stopAuto();
+  if(S.phase==='over')newGame();
+  autoBtn.classList.add('on');autoBtn.textContent='Stop';
+  autoT=setInterval(()=>{if(S.phase==='over')return stopAuto();flip(S.turn)},750);
+};
+document.getElementById('newBtn').onclick=newGame;
+document.getElementById('optWild').onchange=newGame;
+document.getElementById('optAce').onchange=newGame;
+newGame();
+</script>
+</body>
+</html>
